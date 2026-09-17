@@ -169,7 +169,8 @@ Reweighing produced **no change**. AIF360's internal contingency table contained
 
 ## Cross-Domain Findings
 
-<img width="401" height="282" alt="image" src="https://github.com/user-attachments/assets/a1872266-7cd7-446b-a2e2-bdbbc56564f1" />
+<img width="601" height="422" alt="image" src="https://github.com/user-attachments/assets/2be9cb89-c718-4173-9643-765fb413e53e" />
+
 
 
 | Domain | Model | DP Diff | EO Diff |
