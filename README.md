@@ -204,3 +204,14 @@ Standard "off-the-shelf" fairness toolkits should not be applied blindly to clin
 
 ---
 
+The notebook contains all code for both pipelines. Images are embedded above via GitHub user attachments.
+
+---
+
+## Setup
+
+### Requirements
+
+```bash
+pip install fairlearn xgboost shap aif360
+
