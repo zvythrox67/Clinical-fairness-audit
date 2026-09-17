@@ -87,15 +87,15 @@ On imbalanced credit data, the two mechanisms **compound rather than correct eac
 
 ### Visualizations
 
-![Fairness comparison](images/fairness_comparison.png)
+<img width="805" height="284" alt="image" src="https://github.com/user-attachments/assets/aa6ed1a8-77a6-4c49-bc1a-24e1a7acbc95" />
 
 *Left: fairness metrics before and after Reweighing. Right: selection rate by income group — note the wider spread after mitigation.*
 
-![Feature importances](images/feature_importance.png)
+<img width="472" height="350" alt="image" src="https://github.com/user-attachments/assets/498e9b2b-7cc8-4193-b1eb-24c281eb373b" />
 
 *Top features: `int_rate`, `loan_to_income`, `revol_bal`. Interest rate is a proxy for LendingClub's own risk assessment, which is itself influenced by historical lending patterns.*
 
-![Confusion matrix](images/confusion_matrix.png)
+<img width="388" height="335" alt="image" src="https://github.com/user-attachments/assets/b2cc4ad5-d6f8-4c71-ba4f-d9e02c2d1f01" />
 
 *With class weighting, the model trades precision for recall — it catches 68% of defaults but flags many non-defaults as risky.*
 
