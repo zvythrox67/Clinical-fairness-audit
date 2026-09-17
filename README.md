@@ -155,12 +155,12 @@ Reweighing produced **no change**. AIF360's internal contingency table contained
 
 ### Visualizations
 
-<img width="397" height="352" alt="image" src="https://github.com/user-attachments/assets/b6c02cd5-9508-4378-9d29-a99b79d1f13e" />
+<img width="396" height="353" alt="image" src="https://github.com/user-attachments/assets/02761520-a801-4874-815e-0a22abb892db" />
 
 
 *The diabetes model catches 79% of diabetes cases with a high false-positive rate — the same recall-over-precision trade-off as the credit model.*
 
-<img width="403" height="284" alt="image" src="https://github.com/user-attachments/assets/779f934c-b7f9-4570-b19d-f3adae1618a9" />
+<img width="472" height="352" alt="image" src="https://github.com/user-attachments/assets/fee16851-2b3a-4e02-8f82-50de0dc24a48" />
 
 
 *BMI and Age dominate. The model is correctly reflecting biology, not encoding bias.*
@@ -169,7 +169,7 @@ Reweighing produced **no change**. AIF360's internal contingency table contained
 
 ## Cross-Domain Findings
 
-<img width="601" height="422" alt="image" src="https://github.com/user-attachments/assets/2be9cb89-c718-4173-9643-765fb413e53e" />
+<img width="803" height="284" alt="image" src="https://github.com/user-attachments/assets/e84f92aa-b9d1-4ad5-8276-0240fc07b440" />
 
 
 
