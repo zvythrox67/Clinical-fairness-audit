@@ -1,39 +1,60 @@
+# Cross-Domain Fairness Auditing: Credit and Health Risk Models
 
+A research prototype that trains ML risk models on **credit** and **health** data, audits them for demographic disparity, and tests whether standard fairness mitigation techniques generalize across domains.
 
-# Loan Default Prediction with Fairness Auditing
-
-A research prototype that predicts loan default risk on LendingClub data and audits the resulting model for demographic disparity across income groups.
-
-> **⚠️ Research prototype only.** This is not financial advice, not a lending tool, and not intended for any real-world credit decisions. All simulations run on historical data with no live deployment.
+> **⚠️ Research prototype only.** This is not financial advice, not a medical device, not a diagnostic tool, and not intended for real-world credit or clinical decisions. All analysis runs on publicly available historical data with no live deployment.
 
 ---
 
 ## Overview
 
-Machine learning models used in credit scoring can silently encode historical bias. This project:
+Machine learning models used in lending and healthcare can silently encode historical bias. This project:
 
 1. Trains an XGBoost classifier on **1.35 million completed LendingClub loans** (2007–2018)
-2. Audits the model for fairness across **income quartiles** using Fairlearn
-3. Applies **AIF360 Reweighing** as a pre-processing bias mitigation technique
-4. Reports an **unexpected finding**: the mitigation *increased* measured disparity rather than reducing it
+2. Trains a second XGBoost classifier on **253,680 CDC BRFSS diabetes survey responses**
+3. Audits both models for fairness across protected groups using Fairlearn
+4. Applies **AIF360 Reweighing** as a pre-processing bias mitigation technique in both domains
+5. Reports the **cross-domain finding**: Reweighing is unreliable — it backfires in credit and fails entirely in health
 
-The unexpected result — and our analysis of why it happened — is the main contribution.
+The unexpected results — and the analysis of why they happen — are the primary contribution.
 
 ---
 
-## Results
+## Headline Results
 
-### Baseline model (XGBoost with class weighting)
+| Domain | Model | DP Diff | EO Diff |
+|---|---|---|---|
+| Credit (Loan) | Baseline | 0.027 | 0.063 |
+| Credit (Loan) | Reweighed | **0.239** | **0.232** |
+| Health (Diabetes) | Baseline | 0.488 | 0.466 |
+| Health (Diabetes) | Reweighed | **0.488** | **0.466** |
+
+**Three findings:**
+1. **Baseline disparity is 18× larger in health than credit** (0.488 vs 0.027)
+2. **Reweighing backfired in credit** (DP Diff 0.027 → 0.239)
+3. **Reweighing failed entirely in health** (NaN weights, no change)
+
+---
+
+## Domain 1: Credit Risk (Loan Default)
+
+### Setup
+
+- **Data:** LendingClub accepted loans, 2007–2018 (1.35M completed loans)
+- **Target:** `1` = Charged Off, `0` = Fully Paid
+- **Features:** 16 origination-time features including loan amount, interest rate, DTI, FICO score, revolving balance, and derived ratios
+- **Protected attribute:** `income_group` (income quartiles Q1–Q4)
+- **Model:** XGBoost, 100 trees, max depth 5, `scale_pos_weight` set to class ratio (~4.0)
+
+### Baseline Model Performance
 
 | Metric | Value |
 |---|---|
+| Accuracy | 0.64 |
 | ROC-AUC | 0.71 |
-| Accuracy | ~0.64 |
 | Recall on defaults | 0.68 |
-| Demographic Parity Difference | **0.027** |
-| Equalized Odds Difference | **0.063** |
 
-**Selection rate by income quartile (baseline):**
+### Fairness Audit (Baseline)
 
 | Group | Selection Rate | FPR | TPR |
 |---|---|---|---|
@@ -42,70 +63,143 @@ The unexpected result — and our analysis of why it happened — is the main co
 | Q3 | 0.015 | 0.008 | 0.045 |
 | Q4 (highest income) | 0.005 | 0.002 | 0.017 |
 
-Q1 applicants are flagged as default risks at **~7× the rate** of Q4 applicants — a clear disparity worth investigating.
+**DP Diff: 0.027 · EO Diff: 0.063**
 
-### After AIF360 Reweighing
+Q1 applicants are flagged as default risks at ~7× the rate of Q4 applicants.
+
+### After Reweighing
 
 | Metric | Baseline | Reweighed |
 |---|---|---|
-| Demographic Parity Difference | 0.027 | **0.24** |
-| Equalized Odds Difference | 0.063 | **0.23** |
-
-**Selection rate by income quartile (reweighed):**
-
-| Group | Selection Rate |
-|---|---|
-| Q1 | 0.55 |
-| Q2 | 0.46 |
-| Q3 | 0.40 |
-| Q4 | 0.31 |
+| DP Diff | 0.027 | **0.239** |
+| EO Diff | 0.063 | **0.232** |
 
 Reweighing **widened** the disparity instead of narrowing it.
 
----
+### Hypothesis
 
-## Unexpected Finding
+The credit result stems from an interaction between two rebalancing mechanisms:
 
-Contrary to expectation, AIF360 Reweighing *increased* demographic disparity in our setting.
-
-**Hypothesis:** The result stems from an interaction between two rebalancing mechanisms:
-
-- `scale_pos_weight` in XGBoost already pushes the model toward predicting defaults aggressively to compensate for the 80/20 class imbalance
+- `scale_pos_weight` already pushes the model toward predicting defaults aggressively to compensate for the 80/20 class imbalance
 - AIF360 Reweighing further upweights minority-outcome instances per protected group, assuming balanced favorable/unfavorable outcomes
 
-On imbalanced credit data, these two mechanisms **compound rather than correct each other**. Reweighing's per-group rebalancing amplifies the class-imbalance correction in a way that diverges across income groups, producing a wider selection-rate gap.
+On imbalanced credit data, the two mechanisms **compound rather than correct each other**, producing a wider selection-rate gap.
 
-**Implication:** Pre-processing fairness interventions should not be naively combined with class-imbalance correction. Future work should test:
+### Visualizations
 
-- Reweighing *without* `scale_pos_weight`
-- Post-processing methods like Fairlearn's `ThresholdOptimizer`, which directly equalize selection rates
+![Fairness comparison](images/fairness_comparison.png)
+
+*Left: fairness metrics before and after Reweighing. Right: selection rate by income group — note the wider spread after mitigation.*
+
+![Feature importances](images/feature_importance.png)
+
+*Top features: `int_rate`, `loan_to_income`, `revol_bal`. Interest rate is a proxy for LendingClub's own risk assessment, which is itself influenced by historical lending patterns.*
+
+![Confusion matrix](images/confusion_matrix.png)
+
+*With class weighting, the model trades precision for recall — it catches 68% of defaults but flags many non-defaults as risky.*
+
+---
+
+## Domain 2: Health Risk (Diabetes Prediction)
+
+To test whether the credit findings generalize to healthcare, the entire pipeline was replicated on the **CDC Diabetes Health Indicators dataset** (BRFSS 2015).
+
+### Setup
+
+- **Data:** CDC BRFSS 2015 diabetes health indicators (253,680 survey responses)
+- **Target:** `1` = prediabetes or diabetes, `0` = no diabetes (14% positive)
+- **Features:** 21 health, lifestyle, and demographic indicators (BMI, blood pressure, cholesterol, smoking, physical activity, general health, etc.)
+- **Protected attribute:** `age_group` (binary: Young = ages 18–39, Older = ages 40+)
+- **License:** CC0 1.0 Public Domain (CDC)
+- **Model:** Same XGBoost configuration
+
+### Baseline Model Performance
+
+| Metric | Value |
+|---|---|
+| Accuracy | 0.722 |
+| ROC-AUC | 0.827 |
+| Recall on diabetes | 0.79 |
+| Precision on diabetes | 0.31 |
+
+ROC-AUC of 0.827 is at the level of published BRFSS benchmarks.
+
+### Fairness Audit (Baseline)
+
+| Group | Selection Rate | FPR | TPR |
+|---|---|---|---|
+| Young | 0.044 | 0.032 | 0.380 |
+| Older | 0.532 | 0.455 | 0.846 |
+
+**DP Diff: 0.488 · EO Diff: 0.466**
+
+Older adults are flagged as diabetes-risk at **12× the rate** of younger adults.
+
+### Why Age Disparity is Different from Income Disparity
+
+Unlike the credit model's income disparity, the age disparity in the diabetes model is **not evidence of algorithmic bias**.
+
+Age is the **second-strongest predictor** of diabetes in the model (feature importance 489, after BMI at 560), consistent with medical literature — diabetes prevalence rises sharply with age.
+
+A model with high demographic parity across age groups would be a **less accurate medical model**. This illustrates the fundamental tension between fairness and accuracy in clinical ML: when the protected attribute is causally tied to the outcome, demographic parity conflicts with clinical validity.
+
+### After Reweighing
+
+| Metric | Baseline | Reweighed |
+|---|---|---|
+| DP Diff | 0.488 | 0.488 |
+| EO Diff | 0.466 | 0.466 |
+
+Reweighing produced **no change**. AIF360's internal contingency table contained sparse cells (Young + diabetes), causing division-by-zero and NaN weights. XGBoost silently ignored the NaN weights, leaving the model identical to baseline.
+
+### Visualizations
+
+<img width="397" height="352" alt="image" src="https://github.com/user-attachments/assets/b6c02cd5-9508-4378-9d29-a99b79d1f13e" />
+
+
+*The diabetes model catches 79% of diabetes cases with a high false-positive rate — the same recall-over-precision trade-off as the credit model.*
+
+<img width="403" height="284" alt="image" src="https://github.com/user-attachments/assets/779f934c-b7f9-4570-b19d-f3adae1618a9" />
+
+
+*BMI and Age dominate. The model is correctly reflecting biology, not encoding bias.*
+
+---
+
+## Cross-Domain Findings
+
+<img width="401" height="282" alt="image" src="https://github.com/user-attachments/assets/a1872266-7cd7-446b-a2e2-bdbbc56564f1" />
+
+
+| Domain | Model | DP Diff | EO Diff |
+|---|---|---|---|
+| Credit (Loan) | Baseline | 0.027 | 0.063 |
+| Credit (Loan) | Reweighed | 0.239 | 0.232 |
+| Health (Diabetes) | Baseline | 0.488 | 0.466 |
+| Health (Diabetes) | Reweighed | 0.488 | 0.466 |
+
+### 1. Disparity is not always bias
+
+Health data shows **18× more measured disparity** than credit data (0.488 vs 0.027). But this doesn't mean the health model is more biased — it means age is *causally linked* to diabetes, while income is only weakly correlated with default risk. Demographic parity is the wrong fairness metric when the protected attribute directly predicts the outcome.
+
+### 2. Pre-processing fairness interventions are domain-dependent
+
+AIF360 Reweighing failed in **both** domains, but for **different reasons**:
+
+- **Credit:** the intervention compounded with class-imbalance correction, widening disparity
+- **Health:** sparse contingency cells produced NaN weights, so the intervention did nothing
+
+This inconsistency is the core finding.
+
+### 3. Implication for high-stakes ML
+
+Standard "off-the-shelf" fairness toolkits should not be applied blindly to clinical or financial models. What works in one domain may backfire or silently fail in another. Future work should test:
+
+- Reweighing *without* class-imbalance correction
+- Post-processing methods like Fairlearn's `ThresholdOptimizer` that directly equalize selection rates
 - In-processing methods like adversarial debiasing
+- Domain-specific fairness metrics that account for causal relationships between protected attributes and outcomes
 
-This finding is documented as the primary contribution of the project.
-
-
-
-## Visualizations
-
-### Fairness Metrics and Selection Rates
-
-(<img width="405" height="281" alt="image" src="https://github.com/user-attachments/assets/32538584-93ee-4c59-9528-301757888a5f" />
-)
-
-*Left: Demographic Parity and Equalized Odds differences before and after Reweighing. Right: Selection rate by income group — note the wider spread after mitigation.*
-
-### Feature Importances
-
-(<img width="473" height="353" alt="image" src="https://github.com/user-attachments/assets/32d430b3-5e24-4987-8c99-311e81939243" />
-)
-
-*`int_rate`, `loan_to_income`, and `revol_bal` dominate the model. Interest rate is a proxy for LendingClub's own risk assessment, which is itself influenced by historical lending patterns.*
-
-### Confusion Matrix (Baseline)
-
-(<img width="389" height="337" alt="image" src="https://github.com/user-attachments/assets/7b9f2c2c-3205-4235-b96e-9cc875abf807" />
-)
-
-*With class weighting, the model trades precision for recall. It catches 68% of defaults but flags many non-defaults as risky — a reasonable choice for a fairness-audit prototype, where having enough positive predictions is necessary for meaningful disparity measurement.*
-
+---
 
