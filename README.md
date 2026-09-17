@@ -202,6 +202,17 @@ Standard "off-the-shelf" fairness toolkits should not be applied blindly to clin
 - In-processing methods like adversarial debiasing
 - Domain-specific fairness metrics that account for causal relationships between protected attributes and outcomes
 
+### Data
+
+**LendingClub Loan Data** (1.35M rows, ~500 MB compressed):
+- https://www.kaggle.com/datasets/wordsforthewise/lending-club
+- Download `accepted_2007_to_2018Q4.csv.gz`
+
+**CDC Diabetes Health Indicators** (253K rows, ~25 MB):
+- https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset
+- Download `diabetes_binary_health_indicators_BRFSS2015.csv`
+
+Upload both to Google Drive, mount Drive in Colab, and update the `FILE_PATH` and `DIABETES_PATH` variables in Cells 2 and 8.
 ---
 
 The notebook contains all code for both pipelines. Images are embedded above via GitHub user attachments.
